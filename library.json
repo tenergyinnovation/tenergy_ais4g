@@ -1,0 +1,17 @@
+{
+  "name": "tenergy_ais4g",
+  "keywords": "FreeRTOS, ESP32, frameworks",
+  "description": "tenergy_ais4g Library",
+  "homepage": "https://www.tenergyinnovation.co.th",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tenergyinnovation/tenergy_ais4g"
+  },
+  "version": "3.8.0",
+  "authors": {
+    "name": "tenergy_ais4g",
+    "url": "https://github.com/tenergyinnovation/"
+  },
+  "frameworks": "arduino",
+  "platforms": "esp32"
+}
