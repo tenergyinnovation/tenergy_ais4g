@@ -13,8 +13,6 @@
 #include "Ticker.h"
 #include "tenergy_ais4g_Lib.h"
 
-Ticker tickerRedLED;
-Ticker tickerBlueLED;
 Ticker tickerBuilinLED;
 
 // rs485
@@ -22,8 +20,10 @@ HardwareSerial rs485(1);
 HardwareSerial rs485_2(1);
 HardwareSerial SIM300CZ(1);
 
-tenergy_ais4g::tenergy_ais4g()
+tenergy_ais4g::tenergy_ais4g(TwoWire *wire)
 {
+  this->wire = wire;
+  Wire.begin();
 
   pinMode(SW_IO0, INPUT);
   pinMode(SW_E18, INPUT);
@@ -69,11 +69,6 @@ void tenergy_ais4g::Relay2(bool state)
   digitalWrite(RELAY2, state);
 }
 
-
-
-
-
-
 /***********************************************************************
  * FUNCTION:    BlueinLED
  * DESCRIPTION: ON-OFF Bulidin LED[pin15]
@@ -94,7 +89,7 @@ void tenergy_ais4g::BuildinLED(bool state)
 void tenergy_ais4g::buzzer_beep(int times)
 {
 #define PLUSE_BUZZER
-  //#define DC_BUZZER
+  // #define DC_BUZZER
 
   for (int _i = 0; _i < times; _i++)
   {
@@ -252,11 +247,11 @@ bool tenergy_ais4g::PWM_Drive(uint8_t channel, uint8_t percentage)
   }
 }
 
- /***********************************************************************
+/***********************************************************************
  * FUNCTION:    Frequency_Out
  * DESCRIPTION: Generate Frequency to pin 5,18,23,19 but else not allow
  * PARAMETERS:  pin=[5,18,23 and 19], freq=0-19500Hz
- * RETURNED:    0 = error, 1 = pass 
+ * RETURNED:    0 = error, 1 = pass
  ***********************************************************************/
 bool tenergy_ais4g::Frequency_Out(uint8_t pin, double freq)
 {
@@ -264,7 +259,7 @@ bool tenergy_ais4g::Frequency_Out(uint8_t pin, double freq)
   uint8_t _channel;
 
   /* check pin */
-  if( (pin != 5) && (pin != 18) && (pin != 23) && (pin != 19) )
+  if ((pin != 5) && (pin != 18) && (pin != 23) && (pin != 19))
   {
     Serial.printf("Error: parameter input pin must be 5,18,23,19 but else is not allow\r\n");
     return 0;
@@ -275,16 +270,16 @@ bool tenergy_ais4g::Frequency_Out(uint8_t pin, double freq)
     switch (pin)
     {
     case 5:
-      _channel=1;
+      _channel = 1;
       break;
     case 18:
-      _channel=3;
+      _channel = 3;
       break;
     case 23:
-      _channel=5;
+      _channel = 5;
       break;
     case 19:
-      _channel=7;
+      _channel = 7;
       break;
     default:
       break;
@@ -292,38 +287,36 @@ bool tenergy_ais4g::Frequency_Out(uint8_t pin, double freq)
   }
 
   /* check frequency */
-  if( (freq < 0) || (freq > 19500) )
+  if ((freq < 0) || (freq > 19500))
   {
     Serial.printf("Error: Out of range frequency [0-19500Hz]\r\n");
     return 0;
   }
 
-
   /* set 0 Hz */
-  if(freq == 0)
+  if (freq == 0)
   {
-        Serial.printf("Info: pin = %d, channel = %d, frequency = %.0fHz\r\n",pin,_channel,freq);
-        ledcSetup(_channel,1,12);
-        ledcAttachPin(pin,_channel);
-        ledcWrite(pin,0);
-        vTaskDelay(300);
-        return 1;
+    Serial.printf("Info: pin = %d, channel = %d, frequency = %.0fHz\r\n", pin, _channel, freq);
+    ledcSetup(_channel, 1, 12);
+    ledcAttachPin(pin, _channel);
+    ledcWrite(pin, 0);
+    vTaskDelay(300);
+    return 1;
   }
   else
   {
-        Serial.printf("Info: pin = %d, channel = %d, frequency = %.0fHz\r\n",pin,_channel,freq);
-        ledcSetup(_channel,freq,12);
-        ledcAttachPin(pin,_channel);
-        ledcWrite(_channel,4095/2);
-        vTaskDelay(300);
-        
-        ledcSetup(_channel,freq,12); //<- Fix bug by need to re-run command
-        ledcAttachPin(pin,_channel);
-        ledcWrite(_channel,4095/2);
-        vTaskDelay(300);
-        return 1;
+    Serial.printf("Info: pin = %d, channel = %d, frequency = %.0fHz\r\n", pin, _channel, freq);
+    ledcSetup(_channel, freq, 12);
+    ledcAttachPin(pin, _channel);
+    ledcWrite(_channel, 4095 / 2);
+    vTaskDelay(300);
+
+    ledcSetup(_channel, freq, 12); //<- Fix bug by need to re-run command
+    ledcAttachPin(pin, _channel);
+    ledcWrite(_channel, 4095 / 2);
+    vTaskDelay(300);
+    return 1;
   }
-  
 }
 
 /***********************************************************************
@@ -471,7 +464,7 @@ uint16_t tenergy_ais4g::ec_modbusRTU(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -690,7 +683,7 @@ bool tenergy_ais4g::PZEM_016(uint8_t id, float &volt, float &amp, float &power, 
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -744,7 +737,7 @@ bool tenergy_ais4g::PZEM_016(uint8_t id, float &volt, float &amp, float &power, 
   else if (_byte_cnt > 25)
   {
 
-    uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 25; i++)
@@ -917,7 +910,7 @@ bool tenergy_ais4g::PZEM_016(uint8_t id, float &volt, float &amp, float &power, 
 float tenergy_ais4g::PZEM_016_Volt(uint8_t id)
 {
   float _volt;
-  //#define modbusRTU_Debug
+  // #define modbusRTU_Debug
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -986,7 +979,7 @@ float tenergy_ais4g::PZEM_016_Volt(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -1040,7 +1033,7 @@ float tenergy_ais4g::PZEM_016_Volt(uint8_t id)
   else if (_byte_cnt > 25)
   {
 
-    uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 25; i++)
@@ -1125,7 +1118,7 @@ float tenergy_ais4g::PZEM_016_Volt(uint8_t id)
 float tenergy_ais4g::PZEM_016_Amp(uint8_t id)
 {
   float _amp;
-  //#define modbusRTU_Debug
+  // #define modbusRTU_Debug
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -1196,7 +1189,7 @@ float tenergy_ais4g::PZEM_016_Amp(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -1250,7 +1243,7 @@ float tenergy_ais4g::PZEM_016_Amp(uint8_t id)
   else if (_byte_cnt > 25)
   {
 
-    uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 25; i++)
@@ -1416,7 +1409,7 @@ float tenergy_ais4g::PZEM_016_Power(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -1470,7 +1463,7 @@ float tenergy_ais4g::PZEM_016_Power(uint8_t id)
   else if (_byte_cnt > 25)
   {
 
-    uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 25; i++)
@@ -1638,7 +1631,7 @@ int16_t tenergy_ais4g::PZEM_016_Energy(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -1692,7 +1685,7 @@ int16_t tenergy_ais4g::PZEM_016_Energy(uint8_t id)
   else if (_byte_cnt > 25)
   {
 
-    uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 25; i++)
@@ -1788,7 +1781,7 @@ int16_t tenergy_ais4g::PZEM_016_Energy(uint8_t id)
 float tenergy_ais4g::PZEM_016_Freq(uint8_t id)
 {
   float _freq;
-  //#define modbusRTU_Debug
+  // #define modbusRTU_Debug
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -1858,7 +1851,7 @@ float tenergy_ais4g::PZEM_016_Freq(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -1912,7 +1905,7 @@ float tenergy_ais4g::PZEM_016_Freq(uint8_t id)
   else if (_byte_cnt > 25)
   {
 
-    uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 25; i++)
@@ -1998,7 +1991,7 @@ float tenergy_ais4g::PZEM_016_PF(uint8_t id)
 {
   float _pf;
 
-  //#define modbusRTU_Debug
+  // #define modbusRTU_Debug
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -2068,7 +2061,7 @@ float tenergy_ais4g::PZEM_016_PF(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -2122,7 +2115,7 @@ float tenergy_ais4g::PZEM_016_PF(uint8_t id)
   else if (_byte_cnt > 25)
   {
 
-    uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 25; i++)
@@ -2270,7 +2263,7 @@ bool tenergy_ais4g::PZEM_016_ResetEnergy(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -2472,7 +2465,7 @@ int8_t tenergy_ais4g::PZEM_016_SetAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -2682,7 +2675,7 @@ int8_t tenergy_ais4g::PZEM_016_SearchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -2768,7 +2761,7 @@ int8_t tenergy_ais4g::PZEM_016_SearchAddress(void)
     else if (_byte_cnt > 25)
     {
 
-      uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
       // Collect data
       for (int i = 0; i < 25; i++)
       {
@@ -2934,7 +2927,7 @@ bool tenergy_ais4g::PZEM_003(uint8_t id, float &volt, float &amp, float &power, 
     {
       _data_read[_byte_cnt++] = rs485_2.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485_2.available()>0);
@@ -2989,7 +2982,7 @@ bool tenergy_ais4g::PZEM_003(uint8_t id, float &volt, float &amp, float &power, 
   else if (_byte_cnt > 21)
   {
 
-    uint8_t _addcnt = _byte_cnt - 21; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 21; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 21; i++)
@@ -3200,7 +3193,7 @@ float tenergy_ais4g::PZEM_003_Volt(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485_2.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485_2.available()>0);
@@ -3254,7 +3247,7 @@ float tenergy_ais4g::PZEM_003_Volt(uint8_t id)
   else if (_byte_cnt > 21)
   {
 
-    uint8_t _addcnt = _byte_cnt - 21; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 21; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 21; i++)
@@ -3410,7 +3403,7 @@ float tenergy_ais4g::PZEM_003_Amp(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485_2.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485_2.available()>0);
@@ -3464,7 +3457,7 @@ float tenergy_ais4g::PZEM_003_Amp(uint8_t id)
   else if (_byte_cnt > 21)
   {
 
-    uint8_t _addcnt = _byte_cnt - 21; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 21; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 21; i++)
@@ -3620,7 +3613,7 @@ float tenergy_ais4g::PZEM_003_Power(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485_2.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485_2.available()>0);
@@ -3674,7 +3667,7 @@ float tenergy_ais4g::PZEM_003_Power(uint8_t id)
   else if (_byte_cnt > 21)
   {
 
-    uint8_t _addcnt = _byte_cnt - 21; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 21; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 21; i++)
@@ -3841,7 +3834,7 @@ int16_t tenergy_ais4g::PZEM_003_Energy(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485_2.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485_2.available()>0);
@@ -3895,7 +3888,7 @@ int16_t tenergy_ais4g::PZEM_003_Energy(uint8_t id)
   else if (_byte_cnt > 21)
   {
 
-    uint8_t _addcnt = _byte_cnt - 21; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 21; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 21; i++)
@@ -4055,7 +4048,7 @@ bool tenergy_ais4g::PZEM_003_ResetEnergy(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485_2.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485_2.available()>0);
@@ -4261,7 +4254,7 @@ int8_t tenergy_ais4g::PZEM_003_SetAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485_2.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485_2.available()>0);
@@ -4477,7 +4470,7 @@ int8_t tenergy_ais4g::PZEM_003_SearchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485_2.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485_2.available()>0);
@@ -4565,7 +4558,7 @@ int8_t tenergy_ais4g::PZEM_003_SearchAddress(void)
     else if (_byte_cnt > 21)
     {
 
-      uint8_t _addcnt = _byte_cnt - 21; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - 21; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < 21; i++)
@@ -4749,7 +4742,7 @@ bool tenergy_ais4g::WTR10_E(uint8_t id, float &temp, float &humi)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -4804,7 +4797,7 @@ bool tenergy_ais4g::WTR10_E(uint8_t id, float &temp, float &humi)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -4969,7 +4962,7 @@ float tenergy_ais4g::WTR10_E_tempeature(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -5024,7 +5017,7 @@ float tenergy_ais4g::WTR10_E_tempeature(uint8_t id)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -5178,7 +5171,7 @@ float tenergy_ais4g::WTR10_E_humidity(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -5233,7 +5226,7 @@ float tenergy_ais4g::WTR10_E_humidity(uint8_t id)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -5405,7 +5398,7 @@ bool tenergy_ais4g::XY_MD02(uint8_t id, float &temp, float &humi)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -5460,7 +5453,7 @@ bool tenergy_ais4g::XY_MD02(uint8_t id, float &temp, float &humi)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -5625,7 +5618,7 @@ float tenergy_ais4g::XY_MD02_tempeature(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -5680,7 +5673,7 @@ float tenergy_ais4g::XY_MD02_tempeature(uint8_t id)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -5834,7 +5827,7 @@ float tenergy_ais4g::XY_MD02_humidity(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -5889,7 +5882,7 @@ float tenergy_ais4g::XY_MD02_humidity(uint8_t id)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -6059,7 +6052,7 @@ int8_t tenergy_ais4g::XY_MD02_searchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -6147,7 +6140,7 @@ int8_t tenergy_ais4g::XY_MD02_searchAddress(void)
     else if (_byte_cnt > 7)
     {
 
-      uint8_t _addcnt = _byte_cnt - 7; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - 7; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < 7; i++)
@@ -6299,7 +6292,7 @@ int8_t tenergy_ais4g::XY_MD02_SetAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -6513,7 +6506,7 @@ bool tenergy_ais4g::PR3000_H_N01(float &temp, float &humi)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -6568,7 +6561,7 @@ bool tenergy_ais4g::PR3000_H_N01(float &temp, float &humi)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -6731,7 +6724,7 @@ float tenergy_ais4g::PR3000_H_N01_tempeature()
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -6786,7 +6779,7 @@ float tenergy_ais4g::PR3000_H_N01_tempeature()
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -6949,7 +6942,7 @@ float tenergy_ais4g::PR3000_H_N01_humidity()
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -7004,7 +6997,7 @@ float tenergy_ais4g::PR3000_H_N01_humidity()
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -7204,7 +7197,7 @@ int8_t tenergy_ais4g::WATER_FLOW_METER_searchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -7292,7 +7285,7 @@ int8_t tenergy_ais4g::WATER_FLOW_METER_searchAddress(void)
     else if (_byte_cnt > 7)
     {
 
-      uint8_t _addcnt = _byte_cnt - 7; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - 7; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < 7; i++)
@@ -7444,7 +7437,7 @@ int8_t tenergy_ais4g::WATER_FLOW_METER_SetAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -7637,7 +7630,7 @@ float tenergy_ais4g::WATER_FLOW_METER(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -7692,7 +7685,7 @@ float tenergy_ais4g::WATER_FLOW_METER(uint8_t id)
   else if (_byte_cnt > 11)
   {
 
-    uint8_t _addcnt = _byte_cnt - 11; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 11; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -7880,7 +7873,7 @@ int8_t tenergy_ais4g::PYR20_searchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -7968,7 +7961,7 @@ int8_t tenergy_ais4g::PYR20_searchAddress(void)
     else if (_byte_cnt > 7)
     {
 
-      uint8_t _addcnt = _byte_cnt - 7; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - 7; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < 7; i++)
@@ -8120,7 +8113,7 @@ int8_t tenergy_ais4g::PYR20_SetAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -8313,7 +8306,7 @@ int16_t tenergy_ais4g::PYR20_read(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -8368,7 +8361,7 @@ int16_t tenergy_ais4g::PYR20_read(uint8_t id)
   else if (_byte_cnt > 7)
   {
 
-    uint8_t _addcnt = _byte_cnt - 7; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 7; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 7; i++)
@@ -8541,7 +8534,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -8595,7 +8588,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
   else if (_byte_cnt > 45)
   {
 
-    uint8_t _addcnt = _byte_cnt - 45; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 45; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -8851,7 +8844,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -8905,7 +8898,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
   else if (_byte_cnt > 41)
   {
 
-    uint8_t _addcnt = _byte_cnt - 41; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 41; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -9150,7 +9143,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -9204,7 +9197,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
   else if (_byte_cnt > 37)
   {
 
-    uint8_t _addcnt = _byte_cnt - 37; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 37; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -9438,7 +9431,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -9492,7 +9485,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
   else if (_byte_cnt > 33)
   {
 
-    uint8_t _addcnt = _byte_cnt - 33; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 33; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -9715,7 +9708,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -9769,7 +9762,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
   else if (_byte_cnt > 29)
   {
 
-    uint8_t _addcnt = _byte_cnt - 29; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 29; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -9982,7 +9975,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -10036,7 +10029,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
   else if (_byte_cnt > 25)
   {
 
-    uint8_t _addcnt = _byte_cnt - 25; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 25; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -10238,7 +10231,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -10292,7 +10285,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3,
   else if (_byte_cnt > 21)
   {
 
-    uint8_t _addcnt = _byte_cnt - 21; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 21; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -10483,7 +10476,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -10537,7 +10530,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2, float &val3)
   else if (_byte_cnt > 17)
   {
 
-    uint8_t _addcnt = _byte_cnt - 17; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 17; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -10717,7 +10710,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -10771,7 +10764,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1, float &val2)
   else if (_byte_cnt > 13)
   {
 
-    uint8_t _addcnt = _byte_cnt - 13; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 13; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -10940,7 +10933,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -10994,7 +10987,7 @@ bool tenergy_ais4g::ModbusRTU(uint8_t id, float &val1)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -11164,7 +11157,7 @@ int8_t tenergy_ais4g::ModbusRTU_searchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -11252,7 +11245,7 @@ int8_t tenergy_ais4g::ModbusRTU_searchAddress(void)
     else if (_byte_cnt > 9)
     {
 
-      uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < 9; i++)
@@ -11404,7 +11397,7 @@ int8_t tenergy_ais4g::ModbusRTU_setAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -11633,7 +11626,7 @@ int8_t tenergy_ais4g::ENenergic_searchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -11721,7 +11714,7 @@ int8_t tenergy_ais4g::ENenergic_searchAddress(void)
     else if (_byte_cnt > 9)
     {
 
-      uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < 9; i++)
@@ -11873,7 +11866,7 @@ int8_t tenergy_ais4g::ENenergic_setAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -12070,7 +12063,7 @@ float tenergy_ais4g::ENenergic_getTemperature(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -12124,7 +12117,7 @@ float tenergy_ais4g::ENenergic_getTemperature(uint8_t id)
   else if (_byte_cnt > 9)
   {
 
-    uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+    uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
     // Collect data
     for (int i = 0; i < 9; i++)
@@ -12211,8 +12204,8 @@ float tenergy_ais4g::ENenergic_getTemperature(uint8_t id)
 bool tenergy_ais4g::ENenergic_Volt_L_N(uint8_t id, float &L1_N, float &L2_N, float &L3_N)
 {
 
-  const byte _byte_len = 17; //จำนวน byte ที่อ่านได้
-                             // #define modbusRTU_Debug
+  const byte _byte_len = 17; // จำนวน byte ที่อ่านได้
+                             //  #define modbusRTU_Debug
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
   uint16_t _temp_hex = 0xffff;
@@ -12283,7 +12276,7 @@ bool tenergy_ais4g::ENenergic_Volt_L_N(uint8_t id, float &L1_N, float &L2_N, flo
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -12419,8 +12412,8 @@ bool tenergy_ais4g::ENenergic_Volt_L_N(uint8_t id, float &L1_N, float &L2_N, flo
 bool tenergy_ais4g::ENenergic_Volt_L_L(uint8_t id, float &L1_L2, float &L2_L3, float &L3_L1)
 {
 
-  const byte _byte_len = 17; //จำนวน byte ที่อ่านได้
-                             // #define modbusRTU_Debug
+  const byte _byte_len = 17; // จำนวน byte ที่อ่านได้
+                             //  #define modbusRTU_Debug
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
   uint16_t _temp_hex = 0xffff;
@@ -12491,7 +12484,7 @@ bool tenergy_ais4g::ENenergic_Volt_L_L(uint8_t id, float &L1_L2, float &L2_L3, f
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -12627,8 +12620,8 @@ bool tenergy_ais4g::ENenergic_Volt_L_L(uint8_t id, float &L1_L2, float &L2_L3, f
 bool tenergy_ais4g::ENenergic_Current_L(uint8_t id, float &L1, float &L2, float &L3)
 {
 
-  const byte _byte_len = 17; //จำนวน byte ที่อ่านได้
-                             // #define modbusRTU_Debug
+  const byte _byte_len = 17; // จำนวน byte ที่อ่านได้
+                             //  #define modbusRTU_Debug
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
   uint16_t _temp_hex = 0xffff;
@@ -12699,7 +12692,7 @@ bool tenergy_ais4g::ENenergic_Current_L(uint8_t id, float &L1, float &L2, float 
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -12836,7 +12829,7 @@ float tenergy_ais4g::ENenergic_NeutralCurrent(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -12908,7 +12901,7 @@ float tenergy_ais4g::ENenergic_NeutralCurrent(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -13012,7 +13005,6 @@ float tenergy_ais4g::ENenergic_NeutralCurrent(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    ENenergic_Freq
  * DESCRIPTION: get Frequency (Hz)
@@ -13023,7 +13015,7 @@ float tenergy_ais4g::ENenergic_Freq(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -13095,7 +13087,7 @@ float tenergy_ais4g::ENenergic_Freq(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -13199,7 +13191,6 @@ float tenergy_ais4g::ENenergic_Freq(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    ENenergic_PhaseVolt_Angle
  * DESCRIPTION: get Phase Voltage Angle L1, Phase Voltage Angle L2, Phase Voltage Angle L3 (Degree)
@@ -13209,8 +13200,8 @@ float tenergy_ais4g::ENenergic_Freq(uint8_t id)
 bool tenergy_ais4g::ENenergic_PhaseVolt_Angle(uint8_t id, float &L1, float &L2, float &L3)
 {
 
-  const byte _byte_len = 17; //จำนวน byte ที่อ่านได้
-                             // #define modbusRTU_Debug
+  const byte _byte_len = 17; // จำนวน byte ที่อ่านได้
+                             //  #define modbusRTU_Debug
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
   uint16_t _temp_hex = 0xffff;
@@ -13281,7 +13272,7 @@ bool tenergy_ais4g::ENenergic_PhaseVolt_Angle(uint8_t id, float &L1, float &L2, 
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -13371,7 +13362,7 @@ bool tenergy_ais4g::ENenergic_PhaseVolt_Angle(uint8_t id, float &L1, float &L2, 
     _sResult = _sResult + _data_check[5]; // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult << 8;             // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult + _data_check[6]; // Serial.print(">>"); Serial.println(_sResult,HEX);
-    L1 = (*(float *)&_sResult);         //**Floating point 16bit convert
+    L1 = (*(float *)&_sResult);           //**Floating point 16bit convert
 
     /* L2 process */
     _sResult = _data_check[7];             // Serial.print(">>"); Serial.println(_sResult,HEX);
@@ -13381,7 +13372,7 @@ bool tenergy_ais4g::ENenergic_PhaseVolt_Angle(uint8_t id, float &L1, float &L2, 
     _sResult = _sResult + _data_check[9];  // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult << 8;              // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult + _data_check[10]; // Serial.print(">>"); Serial.println(_sResult,HEX);
-    L2 = (*(float *)&_sResult);          //**Floating point 16bit convert
+    L2 = (*(float *)&_sResult);            //**Floating point 16bit convert
 
     /* L3 process */
     _sResult = _data_check[11];            // Serial.print(">>"); Serial.println(_sResult,HEX);
@@ -13391,7 +13382,7 @@ bool tenergy_ais4g::ENenergic_PhaseVolt_Angle(uint8_t id, float &L1, float &L2, 
     _sResult = _sResult + _data_check[13]; // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult << 8;              // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult + _data_check[14]; // Serial.print(">>"); Serial.println(_sResult,HEX);
-    L3 = (*(float *)&_sResult);          //**Floating point 16bit convert
+    L3 = (*(float *)&_sResult);            //**Floating point 16bit convert
 
 #ifdef modbusRTU_Debug
     Serial.printf("Debug: val1 => %.2f\r\n", L1);
@@ -13408,7 +13399,6 @@ bool tenergy_ais4g::ENenergic_PhaseVolt_Angle(uint8_t id, float &L1, float &L2, 
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    ENenergic_PhaseCurrent_Angle
  * DESCRIPTION: get Phase Current Angle L1, Phase Current Angle L2, Phase Current Angle L3 (Degree)
@@ -13418,8 +13408,8 @@ bool tenergy_ais4g::ENenergic_PhaseVolt_Angle(uint8_t id, float &L1, float &L2, 
 bool tenergy_ais4g::ENenergic_PhaseCurrent_Angle(uint8_t id, float &L1, float &L2, float &L3)
 {
 
-  const byte _byte_len = 17; //จำนวน byte ที่อ่านได้
-                             // #define modbusRTU_Debug
+  const byte _byte_len = 17; // จำนวน byte ที่อ่านได้
+                             //  #define modbusRTU_Debug
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
   uint16_t _temp_hex = 0xffff;
@@ -13490,7 +13480,7 @@ bool tenergy_ais4g::ENenergic_PhaseCurrent_Angle(uint8_t id, float &L1, float &L
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -13580,7 +13570,7 @@ bool tenergy_ais4g::ENenergic_PhaseCurrent_Angle(uint8_t id, float &L1, float &L
     _sResult = _sResult + _data_check[5]; // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult << 8;             // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult + _data_check[6]; // Serial.print(">>"); Serial.println(_sResult,HEX);
-    L1 = (*(float *)&_sResult);         //**Floating point 16bit convert
+    L1 = (*(float *)&_sResult);           //**Floating point 16bit convert
 
     /* L2 process */
     _sResult = _data_check[7];             // Serial.print(">>"); Serial.println(_sResult,HEX);
@@ -13590,7 +13580,7 @@ bool tenergy_ais4g::ENenergic_PhaseCurrent_Angle(uint8_t id, float &L1, float &L
     _sResult = _sResult + _data_check[9];  // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult << 8;              // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult + _data_check[10]; // Serial.print(">>"); Serial.println(_sResult,HEX);
-    L2 = (*(float *)&_sResult);          //**Floating point 16bit convert
+    L2 = (*(float *)&_sResult);            //**Floating point 16bit convert
 
     /* L3 process */
     _sResult = _data_check[11];            // Serial.print(">>"); Serial.println(_sResult,HEX);
@@ -13600,7 +13590,7 @@ bool tenergy_ais4g::ENenergic_PhaseCurrent_Angle(uint8_t id, float &L1, float &L
     _sResult = _sResult + _data_check[13]; // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult << 8;              // Serial.print(">>"); Serial.println(_sResult,HEX);
     _sResult = _sResult + _data_check[14]; // Serial.print(">>"); Serial.println(_sResult,HEX);
-    L3 = (*(float *)&_sResult);          //**Floating point 16bit convert
+    L3 = (*(float *)&_sResult);            //**Floating point 16bit convert
 
 #ifdef modbusRTU_Debug
     Serial.printf("Debug: val1 => %.2f\r\n", L1);
@@ -13616,7 +13606,6 @@ bool tenergy_ais4g::ENenergic_PhaseCurrent_Angle(uint8_t id, float &L1, float &L
     return 0;
   }
 }
-
 
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_begin
@@ -13647,7 +13636,7 @@ bool tenergy_ais4g::SchneiderPM2xxx_begin(uint8_t rx, uint8_t tx)
 int8_t tenergy_ais4g::SchneiderPM2xxx_searchAddress(void)
 {
   uint8_t _id;
-  const byte _byte_len = 7; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 7; // จำนวน byte ที่อ่านได้
   // #define modbusRTU_Debug
 
   uint16_t _crc = 0xffff;
@@ -13730,7 +13719,7 @@ int8_t tenergy_ais4g::SchneiderPM2xxx_searchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -13818,7 +13807,7 @@ int8_t tenergy_ais4g::SchneiderPM2xxx_searchAddress(void)
     else if (_byte_cnt > _byte_len)
     {
 
-      uint8_t _addcnt = _byte_cnt - _byte_len; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - _byte_len; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < _byte_len; i++)
@@ -13886,7 +13875,6 @@ int8_t tenergy_ais4g::SchneiderPM2xxx_searchAddress(void)
   Serial.printf("\r\nInfo: Finish searching .... Can't find Schneider Digital Power Meter for this bus [fail]");
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Voltage_AB
  * DESCRIPTION: Voltage A-B (V)
@@ -13897,7 +13885,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_AB(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -13969,7 +13957,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_AB(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -14073,7 +14061,6 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_AB(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Voltage_BC
  * DESCRIPTION: Voltage B-C (V)
@@ -14084,7 +14071,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_BC(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -14156,7 +14143,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_BC(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -14260,8 +14247,6 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_BC(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Voltage_CA
  * DESCRIPTION: Voltage C-A (V)
@@ -14272,7 +14257,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_CA(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -14344,7 +14329,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_CA(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -14448,8 +14433,6 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_CA(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Voltage_LL_Avg
  * DESCRIPTION: Voltage L-L Avg (V)
@@ -14460,7 +14443,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_LL_Avg(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -14532,7 +14515,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_LL_Avg(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -14636,7 +14619,6 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_LL_Avg(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Voltage_AN
  * DESCRIPTION: Voltage A-N (V)
@@ -14647,7 +14629,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_AN(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -14719,7 +14701,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_AN(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -14823,8 +14805,6 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_AN(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Voltage_BN
  * DESCRIPTION: Voltage B-N (V)
@@ -14835,7 +14815,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_BN(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -14907,7 +14887,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_BN(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -15011,7 +14991,6 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_BN(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Voltage_CN
  * DESCRIPTION: Voltage C-N (V)
@@ -15022,7 +15001,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_CN(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -15094,7 +15073,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_CN(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -15198,7 +15177,6 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_CN(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Voltage_LN_Avg
  * DESCRIPTION: get Voltage L-N Avg (V)
@@ -15209,7 +15187,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_LN_Avg(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -15281,7 +15259,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_LN_Avg(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -15385,8 +15363,6 @@ float tenergy_ais4g::SchneiderPM2xxx_Voltage_LN_Avg(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_VoltageUnblance_AB
  * DESCRIPTION: Voltage UnbalanceA-B (V)
@@ -15397,7 +15373,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_AB(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -15469,7 +15445,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_AB(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -15573,7 +15549,6 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_AB(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_VoltageUnblance_BC
  * DESCRIPTION: Voltage UnbalanceB-C (V)
@@ -15584,7 +15559,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_BC(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -15656,7 +15631,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_BC(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -15760,8 +15735,6 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_BC(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_VoltageUnblance_CA
  * DESCRIPTION: Voltage UnbalanceC-A (V)
@@ -15772,7 +15745,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_CA(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -15844,7 +15817,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_CA(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -15948,8 +15921,6 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_CA(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_VoltageUnblance_LL_Worst
  * DESCRIPTION: Voltage UnbalanceL-L Worst (V)
@@ -15960,7 +15931,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_LL_Worst(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -16032,7 +16003,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_LL_Worst(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -16136,7 +16107,6 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_LL_Worst(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_VoltageUnblance_AN
  * DESCRIPTION: Voltage UnbalanceA-N (V)
@@ -16147,7 +16117,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_AN(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -16219,7 +16189,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_AN(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -16323,8 +16293,6 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_AN(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_VoltageUnblance_BN
  * DESCRIPTION: Voltage UnbalanceB-N (V)
@@ -16335,7 +16303,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_BN(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -16407,7 +16375,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_BN(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -16511,7 +16479,6 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_BN(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_VoltageUnblance_CN
  * DESCRIPTION: Voltage UnbalanceC-N (V)
@@ -16522,7 +16489,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_CN(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -16594,7 +16561,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_CN(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -16698,7 +16665,6 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_CN(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_VoltageUnblance_LN_Worst
  * DESCRIPTION: get Voltage L-N Worst (V)
@@ -16709,7 +16675,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_LN_Worst(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -16781,7 +16747,7 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_LN_Worst(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -16885,7 +16851,6 @@ float tenergy_ais4g::SchneiderPM2xxx_VoltageUnblance_LN_Worst(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentA
  * DESCRIPTION: Current A (A)
@@ -16896,7 +16861,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentA(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -16968,7 +16933,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentA(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -17072,7 +17037,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentA(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentB
  * DESCRIPTION: Current B (A)
@@ -17083,7 +17047,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentB(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -17155,7 +17119,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentB(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -17259,8 +17223,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentB(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentC
  * DESCRIPTION: Current C (A)
@@ -17271,7 +17233,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentC(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -17343,7 +17305,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentC(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -17447,8 +17409,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentC(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentN
  * DESCRIPTION: Current N (A)
@@ -17459,7 +17419,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentN(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -17531,7 +17491,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentN(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -17635,7 +17595,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentN(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentG
  * DESCRIPTION: Current G (A)
@@ -17646,7 +17605,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentG(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -17718,7 +17677,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentG(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -17822,8 +17781,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentG(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentAvg
  * DESCRIPTION: Current Avg (A)
@@ -17834,7 +17791,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentAvg(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -17906,7 +17863,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentAvg(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -18010,7 +17967,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentAvg(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentUnblanceA
  * DESCRIPTION: Current Unbalance A (A)
@@ -18021,7 +17977,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceA(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -18093,7 +18049,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceA(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -18197,8 +18153,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceA(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentUnblanceB
  * DESCRIPTION: Current Unbalance B (A)
@@ -18209,7 +18163,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceB(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -18281,7 +18235,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceB(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -18385,7 +18339,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceB(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentUnblanceC
  * DESCRIPTION: Current Unbalance C (A)
@@ -18396,7 +18349,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceC(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -18468,7 +18421,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceC(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -18572,7 +18525,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceC(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_CurrentUnblanceWorst
  * DESCRIPTION: get Current Unblance Worst (A)
@@ -18583,7 +18535,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceWorst(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -18655,7 +18607,7 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceWorst(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -18759,8 +18711,6 @@ float tenergy_ais4g::SchneiderPM2xxx_CurrentUnblanceWorst(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ActivePowerA
  * DESCRIPTION: ActivePower A (kW)
@@ -18771,7 +18721,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerA(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -18843,7 +18793,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerA(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -18947,7 +18897,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerA(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ActivePowerB
  * DESCRIPTION: ActivePower B (kW)
@@ -18958,7 +18907,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerB(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -19030,7 +18979,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerB(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -19134,8 +19083,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerB(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ActivePowerC
  * DESCRIPTION: ActivePower C (kW)
@@ -19146,7 +19093,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerC(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -19218,7 +19165,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerC(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -19322,8 +19269,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerC(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ActivePowerTotal
  * DESCRIPTION: Active Power Total (kW)
@@ -19334,7 +19279,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerTotal(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -19406,7 +19351,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerTotal(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -19510,7 +19455,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ActivePowerTotal(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ReactivePowerA
  * DESCRIPTION: ReactivePower A (kVAR)
@@ -19521,7 +19465,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerA(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -19593,7 +19537,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerA(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -19697,7 +19641,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerA(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ReactivePowerB
  * DESCRIPTION: ReactivePower B (kVAR)
@@ -19708,7 +19651,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerB(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -19780,7 +19723,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerB(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -19884,8 +19827,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerB(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ReactivePowerC
  * DESCRIPTION: ReactivePower C (kVAR)
@@ -19896,7 +19837,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerC(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -19968,7 +19909,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerC(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -20072,8 +20013,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerC(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ReactivePowerTotal
  * DESCRIPTION: Active Power Total (kVAR)
@@ -20084,7 +20023,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerTotal(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -20156,7 +20095,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerTotal(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -20260,7 +20199,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ReactivePowerTotal(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ApparentPowerA
  * DESCRIPTION: ApparentPower A (kVA)
@@ -20271,7 +20209,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerA(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -20343,7 +20281,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerA(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -20447,7 +20385,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerA(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ApparentPowerB
  * DESCRIPTION: ApparentPower B (kVA)
@@ -20458,7 +20395,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerB(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -20530,7 +20467,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerB(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -20634,8 +20571,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerB(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ApparentPowerC
  * DESCRIPTION: ApparentPower C (kVA)
@@ -20646,7 +20581,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerC(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -20718,7 +20653,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerC(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -20822,8 +20757,6 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerC(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_ApparentPowerTotal
  * DESCRIPTION: Active Power Total (kVA)
@@ -20834,7 +20767,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerTotal(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -20906,7 +20839,7 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerTotal(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -21010,11 +20943,9 @@ float tenergy_ais4g::SchneiderPM2xxx_ApparentPowerTotal(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_PowerFactorA
- * DESCRIPTION: PowerFactor A 
+ * DESCRIPTION: PowerFactor A
  * PARAMETERS:  address
  * RETURNED:    float
  ***********************************************************************/
@@ -21022,7 +20953,7 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorA(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -21094,7 +21025,7 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorA(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -21198,10 +21129,9 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorA(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_PowerFactorB
- * DESCRIPTION: PowerFactor B 
+ * DESCRIPTION: PowerFactor B
  * PARAMETERS:  address
  * RETURNED:    float
  ***********************************************************************/
@@ -21209,7 +21139,7 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorB(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -21281,7 +21211,7 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorB(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -21385,11 +21315,9 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorB(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_PowerFactorC
- * DESCRIPTION: PowerFactor C 
+ * DESCRIPTION: PowerFactor C
  * PARAMETERS:  address
  * RETURNED:    float
  ***********************************************************************/
@@ -21397,7 +21325,7 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorC(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -21469,7 +21397,7 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorC(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -21573,11 +21501,9 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorC(uint8_t id)
   }
 }
 
-
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_PowerFactorTotal
- * DESCRIPTION: Active Power Total 
+ * DESCRIPTION: Active Power Total
  * PARAMETERS:  address
  * RETURNED:    float
  ***********************************************************************/
@@ -21585,7 +21511,7 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorTotal(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -21657,7 +21583,7 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorTotal(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -21761,7 +21687,6 @@ float tenergy_ais4g::SchneiderPM2xxx_PowerFactorTotal(uint8_t id)
   }
 }
 
-
 /***********************************************************************
  * FUNCTION:    SchneiderPM2xxx_Freq
  * DESCRIPTION: Frequency (Hz)
@@ -21772,7 +21697,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Freq(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -21844,7 +21769,7 @@ float tenergy_ais4g::SchneiderPM2xxx_Freq(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -22060,7 +21985,7 @@ int8_t tenergy_ais4g::SDM120CT_searchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -22148,7 +22073,7 @@ int8_t tenergy_ais4g::SDM120CT_searchAddress(void)
     else if (_byte_cnt > 9)
     {
 
-      uint8_t _addcnt = _byte_cnt - 9; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - 9; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < 9; i++)
@@ -22238,7 +22163,7 @@ int8_t tenergy_ais4g::SDM120CT_setAddress(uint8_t id, uint8_t new_id)
 
   /*convert float*/
   f = new_id;
-  _new_id = *(reinterpret_cast<int*>(&f));
+  _new_id = *(reinterpret_cast<int *>(&f));
 
   x[0] = 0xff;
   x[1] = 0xff;
@@ -22250,12 +22175,12 @@ int8_t tenergy_ais4g::SDM120CT_setAddress(uint8_t id, uint8_t new_id)
   x[2] = _new_id >> 8;
   x[3] = _new_id >> 4;
 
-// #define modbusRTU_Debug
+  // #define modbusRTU_Debug
 
-  /*Dedug check Hex convert*/
-  #ifdef modbusRTU_Debug
-  Serial.printf("ID [%d] : Hex => 0x%02X \n",new_id,_new_id);
-  #endif
+/*Dedug check Hex convert*/
+#ifdef modbusRTU_Debug
+  Serial.printf("ID [%d] : Hex => 0x%02X \n", new_id, _new_id);
+#endif
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -22329,7 +22254,7 @@ int8_t tenergy_ais4g::SDM120CT_setAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -22457,7 +22382,7 @@ float tenergy_ais4g::SDM120CT_Volt(uint8_t id)
   // #define modbusRTU_Debug
 
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -22529,7 +22454,7 @@ float tenergy_ais4g::SDM120CT_Volt(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -22641,9 +22566,9 @@ float tenergy_ais4g::SDM120CT_Volt(uint8_t id)
 float tenergy_ais4g::SDM120CT_Power(uint8_t id)
 {
   // #define modbusRTU_Debug
-  
+
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -22715,7 +22640,7 @@ float tenergy_ais4g::SDM120CT_Power(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -22829,7 +22754,7 @@ float tenergy_ais4g::SDM120CT_Current(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -22901,7 +22826,7 @@ float tenergy_ais4g::SDM120CT_Current(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -23015,7 +22940,7 @@ float tenergy_ais4g::SDM120CT_AP_Power(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -23087,7 +23012,7 @@ float tenergy_ais4g::SDM120CT_AP_Power(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -23201,7 +23126,7 @@ float tenergy_ais4g::SDM120CT_Reac_Power(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -23273,7 +23198,7 @@ float tenergy_ais4g::SDM120CT_Reac_Power(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -23387,7 +23312,7 @@ float tenergy_ais4g::SDM120CT_Total_Energy(uint8_t id)
 {
   // #define modbusRTU_Debug
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -23459,7 +23384,7 @@ float tenergy_ais4g::SDM120CT_Total_Energy(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -23574,7 +23499,7 @@ float tenergy_ais4g::SDM120CT_Freq(uint8_t id)
   // #define modbusRTU_Debug
 
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -23647,7 +23572,7 @@ float tenergy_ais4g::SDM120CT_Freq(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -23760,9 +23685,9 @@ float tenergy_ais4g::SDM120CT_Freq(uint8_t id)
 float tenergy_ais4g::SDM120CT_POWER_FACTOR(uint8_t id)
 {
   // #define modbusRTU_Debug
-  
+
   float _tempFloat;
-  const byte _byte_len = 9; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 9; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -23834,7 +23759,7 @@ float tenergy_ais4g::SDM120CT_POWER_FACTOR(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -23967,7 +23892,7 @@ bool tenergy_ais4g::WIND_RSFSN01_begin(uint8_t rx, uint8_t tx)
 int8_t tenergy_ais4g::WIND_RSFSN01_searchAddress(void)
 {
   uint8_t _id;
-  const byte _byte_len = 7; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 7; // จำนวน byte ที่อ่านได้
   // #define modbusRTU_Debug
 
   uint16_t _crc = 0xffff;
@@ -24050,7 +23975,7 @@ int8_t tenergy_ais4g::WIND_RSFSN01_searchAddress(void)
       {
         _data_read[_byte_cnt++] = rs485.read();
         if (_data_read[0] == 0x00)
-        { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+        { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
           _byte_cnt = 0;
         }
         // }while(rs485.available()>0);
@@ -24138,7 +24063,7 @@ int8_t tenergy_ais4g::WIND_RSFSN01_searchAddress(void)
     else if (_byte_cnt > _byte_len)
     {
 
-      uint8_t _addcnt = _byte_cnt - _byte_len; //ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
+      uint8_t _addcnt = _byte_cnt - _byte_len; // ตัวแปรชดเชยการอ่านค่าผิดตำแหน่ง
 
       // Collect data
       for (int i = 0; i < _byte_len; i++)
@@ -24290,7 +24215,7 @@ int8_t tenergy_ais4g::WIND_RSFSN01_setAddress(uint8_t id, uint8_t new_id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if (_data_read[0] == 0x00)
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -24415,10 +24340,10 @@ int8_t tenergy_ais4g::WIND_RSFSN01_setAddress(uint8_t id, uint8_t new_id)
  ***********************************************************************/
 float tenergy_ais4g::WIND_RSFSN01_SPEED(uint8_t id)
 {
-// #define modbusRTU_Debug
+  // #define modbusRTU_Debug
   float _tempFloat;
   int _speed;
-  const byte _byte_len = 7; //จำนวน byte ที่อ่านได้
+  const byte _byte_len = 7; // จำนวน byte ที่อ่านได้
 
   uint16_t _crc = 0xffff;
   uint16_t _crc_r = 0xffff;
@@ -24490,7 +24415,7 @@ float tenergy_ais4g::WIND_RSFSN01_SPEED(uint8_t id)
     {
       _data_read[_byte_cnt++] = rs485.read();
       if ((_data_read[0] == 0x00) || (_data_read[0] == 0xFF))
-      { //แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
+      { // แก้ไช bug เนื่องจากอ่านค่าแรกได้ 0x00 หรือ 0xFF
         _byte_cnt = 0;
       }
       // }while(rs485.available()>0);
@@ -24578,7 +24503,7 @@ float tenergy_ais4g::WIND_RSFSN01_SPEED(uint8_t id)
     // _sResult = _sResult << 8;             // Serial.print(">>"); Serial.println(_sResult,HEX);
     // _sResult = _sResult + _data_check[5]; // Serial.print(">>"); Serial.println(_sResult,HEX);
     // _sResult = _sResult << 8;              Serial.print(">>"); Serial.println(_sResult,HEX);
-    _tempFloat = (*(int *)&_sResult) / 10.0;   //**Floating point 16bit convert
+    _tempFloat = (*(int *)&_sResult) / 10.0; //**Floating point 16bit convert
 
 #ifdef modbusRTU_Debug
     Serial.printf("Debug: val1 => %.2f \r\n", _tempFloat);
@@ -24774,4 +24699,56 @@ bool tenergy_ais4g::SIM300CZ_sms(char *number, char *sms)
   }
 
   return true;
+}
+
+void tenergy_ais4g::sht40_begin(uint8_t address) {
+    this->dev_addr = address;
+}
+
+bool tenergy_ais4g::sht40_read() {
+    this->wire->beginTransmission(this->dev_addr);
+    this->wire->write(0xFD);
+    this->wire->endTransmission();
+
+    delay(10);
+
+    int n = this->wire->requestFrom((int)this->dev_addr, (int)6);
+    if (n != 6) {
+        return false;
+    }
+
+    uint8_t rx_bytes[6];
+    this->wire->readBytes(rx_bytes, 6);
+
+    uint16_t t_ticks = rx_bytes[0] * 256 + rx_bytes[1];
+    (void)rx_bytes[2];
+    uint16_t rh_ticks = rx_bytes[3] * 256 + rx_bytes[4];
+    (void)rx_bytes[5];
+    this->t_degC = -45.0f + 175.0f * t_ticks / 65535.0f;
+    this->rh_pRH = -6.0f + 125.0f * rh_ticks / 65535.0f;
+
+    this->rh_pRH = max(min(rh_pRH, 100.0f), 0.0f);
+
+    return true;
+}
+
+float tenergy_ais4g::sht40_readTemperature(int units) {
+    if (!this->sht40_read()) {
+        return -99;
+    }
+
+    return units == CELSIUS ? this->t_degC : (this->t_degC * 9.0 / 5.0 + 32.0);
+}
+
+float tenergy_ais4g::sht40_readHumidity() {
+    if (!this->sht40_read()) {
+        return -99;
+    }
+
+    return this->rh_pRH;
+}
+
+void tenergy_ais4g::sht40_end() {
+    this->wire = NULL;
+    this->dev_addr = 0;
 }
