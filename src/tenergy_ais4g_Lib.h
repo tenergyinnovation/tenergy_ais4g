@@ -40,5 +40,5 @@ static const uint8_t daysInMonth [] PROGMEM = { 31,28,31,30,31,30,31,31,30,31,30
  ***********************************************************************/
 void TickBuildinLED_blink(void){
         bool _state = digitalRead(LED_ONBOARD);
-        digitalWrite(BUILTIN_LED, !_state);
+        digitalWrite(LED_ONBOARD, !_state);
 }

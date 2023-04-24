@@ -66,8 +66,6 @@ private:
     bool sht40_read();
 
 public:
-    void TickBlueLED(float second);
-    void TickRedLED(float second);
     void TickBuildinLED(float second);
     bool PWM_Setup(uint8_t channel, double freq, uint8_t resolution_bit, uint8_t pin);
     bool PWM_Drive(uint8_t channel, uint8_t percentage);
